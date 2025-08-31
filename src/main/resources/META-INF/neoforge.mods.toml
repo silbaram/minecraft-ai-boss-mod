@@ -1,0 +1,35 @@
+modLoader = "javafml"
+# Accept any language loader version.  See NeoForge docs for details【840203598704741†L186-L194】.
+loaderVersion = "[1,)"
+
+# Use properties from gradle.properties for metadata.  Gradle will replace
+# expressions like ${mod_license} with the corresponding property value at
+# build time【840203598704741†L175-L180】.
+license = "${mod_license}"
+
+[[mods]]
+modId = "${mod_id}"
+version = "${mod_version}"
+displayName = "${mod_name}"
+updateJSONURL = ""
+displayURL = ""
+logoFile = ""
+authors = "${mod_authors}"
+description = """
+${mod_description}
+"""
+
+# Dependency configuration
+[[dependencies.boss_ai]]
+    modId = "neoforge"
+    type = "required"
+    versionRange = "[20.6.138,21.0)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.boss_ai]]
+    modId = "minecraft" 
+    type = "required"
+    versionRange = "[1.20.6,1.21)"
+    ordering = "NONE"
+    side = "BOTH"

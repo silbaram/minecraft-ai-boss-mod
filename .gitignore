@@ -1,0 +1,37 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# IDE
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+bin/
+out/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# JVM Crash Logs
+hs_err_pid*.log
+java_pid*.hprof
+
+# Minecraft
+run/
+logs/
+
+# Temp files
+*.tmp
+*.bak
+*.swp
+*~
