@@ -7,6 +7,7 @@ import java.nio.FloatBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
+import com.mojang.logging.LogUtils
 
 /**
  * Loads and executes a small ONNX model to select a tactic for our boss.  If the
@@ -17,6 +18,7 @@ import kotlin.io.path.Path
  */
 class TacticsModel {
     private val session: OrtSession?
+    private val logger = LogUtils.getLogger()
 
     init {
         session = try {
@@ -24,11 +26,14 @@ class TacticsModel {
             if (modelPath != null && Files.exists(modelPath)) {
                 val env = OrtEnvironment.getEnvironment()
                 val options = OrtSession.SessionOptions()
+                logger.info("Loading ONNX tactics model: {}", modelPath)
                 env.createSession(modelPath.toString(), options)
             } else {
+                logger.warn("ONNX model not found, using heuristic fallback: {}", modelPath)
                 null
             }
         } catch (e: Exception) {
+            logger.error("Failed to load ONNX model, falling back to heuristics", e)
             null
         }
     }

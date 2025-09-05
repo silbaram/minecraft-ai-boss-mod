@@ -1,6 +1,7 @@
 {
   "entity.boss_ai.sentinel_boss": "센티넬 보스",
   "item.minecraft.spawn_egg.entity.boss_ai.sentinel_boss": "센티넬 보스 소환 알",
+  "item.boss_ai.sentinel_boss_spawn_egg": "센티넬 보스 소환 알",
   "subtitles.boss_ai.sentinel_boss.ambient": "센티넬 보스 으르렁거림",
   "subtitles.boss_ai.sentinel_boss.hurt": "센티넬 보스 아픔",
   "subtitles.boss_ai.sentinel_boss.death": "센티넬 보스 사망"

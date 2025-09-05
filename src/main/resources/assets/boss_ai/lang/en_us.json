@@ -1,6 +1,7 @@
 {
   "entity.boss_ai.sentinel_boss": "Sentinel Boss",
   "item.minecraft.spawn_egg.entity.boss_ai.sentinel_boss": "Sentinel Boss Spawn Egg",
+  "item.boss_ai.sentinel_boss_spawn_egg": "Sentinel Boss Spawn Egg",
   "subtitles.boss_ai.sentinel_boss.ambient": "Sentinel Boss growls",
   "subtitles.boss_ai.sentinel_boss.hurt": "Sentinel Boss hurts",
   "subtitles.boss_ai.sentinel_boss.death": "Sentinel Boss dies"

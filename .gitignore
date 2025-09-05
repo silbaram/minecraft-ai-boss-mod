@@ -28,6 +28,7 @@ java_pid*.hprof
 
 # Minecraft
 run/
+runs/
 logs/
 
 # Temp files
