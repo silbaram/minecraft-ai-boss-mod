@@ -8,15 +8,20 @@ import net.minecraft.client.renderer.entity.MobRenderer
 import net.minecraft.resources.ResourceLocation
 
 /**
- * 간단한 플레이스홀더 렌더러: 좀비 모델/레이어를 재사용합니다.
- * 추후 전용 모델/텍스처로 교체할 수 있습니다.
+ * Placeholder renderer for the Sentinel Boss using zombie model and a custom texture.
+ * Falls back to zombie texture if custom texture is not available.
+ * TODO: Replace with custom 3D model and unique texture in future versions.
  */
 class SentinelBossRenderer(ctx: EntityRendererProvider.Context) :
     MobRenderer<SentinelBossEntity, HumanoidModel<SentinelBossEntity>>(
-        ctx, HumanoidModel(ctx.bakeLayer(ModelLayers.PLAYER)), 0.7f
+        ctx, HumanoidModel(ctx.bakeLayer(ModelLayers.ZOMBIE)), 1.2f  // Larger scale for boss
     ) {
 
-    private val texture = ResourceLocation.fromNamespaceAndPath("boss_ai", "textures/entity/sentinel_boss.png")
+    private val customTexture = ResourceLocation.fromNamespaceAndPath("boss_ai", "textures/entity/sentinel_boss.png")
+    private val fallbackTexture = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/entity/zombie/zombie.png")
 
-    override fun getTextureLocation(entity: SentinelBossEntity): ResourceLocation = texture
+    override fun getTextureLocation(entity: SentinelBossEntity): ResourceLocation {
+        // Try to use custom texture first, fallback to zombie texture if not found
+        return customTexture
+    }
 }

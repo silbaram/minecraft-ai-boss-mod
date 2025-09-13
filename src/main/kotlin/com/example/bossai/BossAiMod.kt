@@ -1,17 +1,17 @@
 package com.example.bossai
 
-import net.neoforged.bus.api.IEventBus
 import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge
 import net.neoforged.neoforge.event.entity.EntityAttributeCreationEvent
+import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 
 @Mod(BossAiMod.MOD_ID)
-class BossAiMod(modBus: IEventBus) {
+class BossAiMod {
     init {
-        ModEntities.ENTITY_TYPES.register(modBus)
-        ModItems.ITEMS.register(modBus)
-        modBus.addListener(::onEntityAttributeCreation)
-        NeoForge.EVENT_BUS.register(this)
+        ModEntities.ENTITY_TYPES.register(MOD_BUS)
+        ModItems.ITEMS.register(MOD_BUS)
+        MOD_BUS.addListener(::onEntityAttributeCreation)
+        // No need to register this class since it has no @SubscribeEvent methods
     }
 
     private fun onEntityAttributeCreation(event: EntityAttributeCreationEvent) {

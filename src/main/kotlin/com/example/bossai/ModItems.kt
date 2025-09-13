@@ -22,10 +22,11 @@ object ModItems {
 
     val SENTINEL_BOSS_SPAWN_EGG: DeferredHolder<Item, Item> =
         ITEMS.register("sentinel_boss_spawn_egg", Supplier {
+            @Suppress("DEPRECATION")
             SpawnEggItem(
                 ModEntities.SENTINEL_BOSS.get() as EntityType<out Mob>,
-                0x556677, // 바탕색
-                0xCC9933, // 점색
+                0x556677, // 바탕색 (어두운 회청색)
+                0xCC9933, // 점색 (금색)
                 Item.Properties()
             )
         })

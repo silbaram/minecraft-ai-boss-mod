@@ -25,20 +25,29 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
     }
 
     override fun start() {
-        // Mark that the attack has occurred.
         executed = true
-        // Create an axis aligned bounding box around the boss.
-        val area: AABB = boss.boundingBox.inflate(3.0)
+        
+        // Create an axis aligned bounding box around the boss
+        val area: AABB = boss.boundingBox.inflate(4.0) // Slightly larger area
         val players: List<Player> = boss.level().getEntitiesOfClass(Player::class.java, area, EntitySelector.NO_SPECTATORS)
-        // Deal damage to each player.  Use a generic mob attack damage source
-        // as an example.  In a real mod you may want to use custom damage
-        // types or apply potion effects.  We leverage the player's DamageSources
-        // API to obtain a mob attack type【759699647327456†L118-L154】.
+        
+        // Deal damage to each player with scaling based on distance
         for (player in players) {
+            val distance = boss.distanceTo(player).coerceAtLeast(1f)
+            val baseDamage = 8.0f
+            val scaledDamage = (baseDamage * (4f / distance)).coerceIn(4f, baseDamage)
+            
             val source = player.damageSources().mobAttack(boss)
-            player.hurt(source, 6.0f)
+            player.hurt(source, scaledDamage)
+            
+            // Add knockback effect
+            val dx = player.x - boss.x
+            val dz = player.z - boss.z
+            val length = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.1)
+            player.knockback(0.5, dx / length, dz / length)
         }
-        // Play a swing animation to give visual feedback.
+        
+        // Play swing animation for visual feedback
         boss.swing(InteractionHand.MAIN_HAND)
     }
 

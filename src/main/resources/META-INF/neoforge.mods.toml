@@ -1,6 +1,6 @@
-modLoader = "javafml"
-# Accept any language loader version.  See NeoForge docs for details【840203598704741†L186-L194】.
-loaderVersion = "[1,)"
+modLoader = "kotlinforforge"
+# KotlinForForge version requirement
+loaderVersion = "[5.9,)"
 
 # Use properties from gradle.properties for metadata.  Gradle will replace
 # expressions like ${mod_license} with the corresponding property value at
@@ -33,3 +33,5 @@ ${mod_description}
     versionRange = "${minecraft_version_range}"
     ordering = "NONE"
     side = "BOTH"
+
+# KotlinForForge handles Kotlin dependencies automatically

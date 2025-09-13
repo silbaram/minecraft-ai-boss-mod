@@ -9,6 +9,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent
 
 /**
  * 클라이언트 전용 등록(엔티티 렌더러 등).
+ * KotlinForForge와 함께 사용 시 MOD 버스 사용
  */
 @EventBusSubscriber(modid = BossAiMod.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = [Dist.CLIENT])
 object BossAiClient {

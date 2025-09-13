@@ -1,9 +1,5 @@
 package com.example.bossai.ai
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
-import java.nio.FloatBuffer
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
@@ -17,24 +13,141 @@ import com.mojang.logging.LogUtils
  * the logits is mapped to a [Tactic] value.
  */
 class TacticsModel {
-    private val session: OrtSession?
+    private val session: Any? // Using Any to avoid direct import dependency
     private val logger = LogUtils.getLogger()
+    private var onnxAvailable = false
+    private var actualSession: Any? = null // For lazy initialization
+
+    // Prefer detecting available classes over relying solely on a system property (which may not propagate early enough).
+    // Use ClassLoader.loadClass instead of Class.forName to avoid initialization
+    private fun classExists(name: String): Boolean = try {
+        Thread.currentThread().contextClassLoader.loadClass(name)
+        true
+    } catch (_: ClassNotFoundException) {
+        false
+    } catch (_: LinkageError) {
+        // Handle cases where class exists but can't be linked (e.g., native libs missing)
+        false
+    } catch (_: Exception) {
+        // Handle any other initialization errors
+        false
+    }
+
+    private val onnxPackage: String = run {
+        val sysProp = System.getProperty("boss_ai.dev.env")
+        val devHint = sysProp == "true"
+        val original = "ai.onnxruntime"
+        val shaded = "com.example.bossai.shaded.onnxruntime"
+
+        // Detection order:
+        // 1. If dev hint set and original exists -> use original
+        // 2. If shaded exists and original missing -> use shaded
+        // 3. If original exists -> use original
+        // 4. Fallback to shaded (will still fail gracefully if absent)
+        when {
+            devHint && classExists("$original.OrtEnvironment") -> original
+            !classExists("$original.OrtEnvironment") && classExists("$shaded.OrtEnvironment") -> shaded
+            classExists("$original.OrtEnvironment") -> original
+            classExists("$shaded.OrtEnvironment") -> shaded
+            else -> original // default; subsequent init will log failure
+        }
+    }
 
     init {
         session = try {
-            val modelPath = getModelPath()
-            if (modelPath != null && Files.exists(modelPath)) {
-                val env = OrtEnvironment.getEnvironment()
-                val options = OrtSession.SessionOptions()
-                logger.info("Loading ONNX tactics model: {}", modelPath)
-                env.createSession(modelPath.toString(), options)
-            } else {
-                logger.warn("ONNX model not found, using heuristic fallback: {}", modelPath)
+            logger.info("========================================")
+            logger.info("🤖 Boss AI System Initialization")
+            logger.info("========================================")
+            logger.info("ONNX package to use (auto-detected): {}", onnxPackage)
+            logger.info("System property boss_ai.dev.env = {}", System.getProperty("boss_ai.dev.env"))
+            logger.info("Class presence - ai.onnxruntime: {}, shaded: {}",
+                classExists("ai.onnxruntime.OrtEnvironment"),
+                classExists("com.example.bossai.shaded.onnxruntime.OrtEnvironment")
+            )
+
+            // Defer ONNX initialization - only check if classes exist without initializing
+            if (!classExists("$onnxPackage.OrtEnvironment")) {
+                logger.warn("⚠️ ONNX Runtime library not available (package: {})", onnxPackage)
+                logger.info("🔄 Falling back to heuristic AI mode")
+                logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Classic Algorithm)")
+                logger.info("========================================")
                 null
+            } else {
+                // Defer actual ONNX session creation until first use to avoid DLL loading during deserialization
+                logger.info("✅ ONNX Runtime classes detected, deferring initialization")
+                logger.info("🧠 AI MODE: DEFERRED ML INITIALIZATION")
+                logger.info("========================================")
+                "DEFERRED" // Use a marker string to indicate deferred initialization
             }
         } catch (e: Exception) {
-            logger.error("Failed to load ONNX model, falling back to heuristics", e)
+            logger.error("❌ Failed to detect ONNX classes: {}", e.message)
+            logger.info("🔄 Falling back to heuristic AI mode")
+            logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Classic Algorithm)")
+            logger.info("========================================")
             null
+        }
+    }
+
+    /**
+     * Lazy initialization of ONNX session to avoid DLL loading during entity deserialization
+     */
+    private fun initializeOnnxSession(): Any? {
+        if (actualSession != null || session != "DEFERRED") {
+            return actualSession
+        }
+
+        try {
+            logger.info("🔄 Initializing ONNX session on first use...")
+
+            // Try to dynamically load ONNX classes
+            val ortEnvironmentClass = Class.forName("$onnxPackage.OrtEnvironment")
+            val ortSessionClass = Class.forName("$onnxPackage.OrtSession")
+            logger.info("✅ ONNX Runtime classes loaded successfully")
+
+            val modelPath = getModelPath()
+            if (modelPath != null && Files.exists(modelPath)) {
+                val getEnvironmentMethod = ortEnvironmentClass.getMethod("getEnvironment")
+                val env = getEnvironmentMethod.invoke(null)
+
+                val sessionOptionsClass = Class.forName("$onnxPackage.OrtSession\$SessionOptions")
+                val optionsConstructor = sessionOptionsClass.getConstructor()
+                val options = optionsConstructor.newInstance()
+
+                val createSessionMethod = ortEnvironmentClass.getMethod("createSession", String::class.java, sessionOptionsClass)
+                actualSession = createSessionMethod.invoke(env, modelPath.toString(), options)
+
+                logger.info("🎯 ONNX ML Model loaded successfully: {}", modelPath)
+                logger.info("🧠 AI MODE: MACHINE LEARNING (Advanced Neural Network)")
+                onnxAvailable = true
+                return actualSession
+            } else {
+                logger.warn("⚠️ ONNX model file not found at: {}", modelPath)
+                logger.info("🔄 Using heuristic AI mode")
+                return null
+            }
+        } catch (e: UnsatisfiedLinkError) {
+            logger.error("❌ ONNX native library failed to load: {}", e.message)
+            logger.info("🔄 Disabling ONNX permanently due to native library issue")
+            logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Native Library Issue)")
+            // Mark as permanently failed to avoid retrying
+            actualSession = "FAILED"
+            onnxAvailable = false
+            return null
+        } catch (e: NoClassDefFoundError) {
+            logger.error("❌ ONNX class initialization failed: {}", e.message)
+            logger.info("🔄 Disabling ONNX permanently due to class initialization failure")
+            logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Class Init Failure)")
+            // Mark as permanently failed to avoid retrying
+            actualSession = "FAILED"
+            onnxAvailable = false
+            return null
+        } catch (e: Exception) {
+            logger.error("❌ Failed to initialize ONNX session: {}", e.message)
+            logger.info("🔄 Using heuristic AI mode")
+            logger.debug("ONNX initialization error details:", e)
+            actualSession = "FAILED"
+            onnxAvailable = false
+            return null
         }
     }
 
@@ -44,38 +157,131 @@ class TacticsModel {
      * vector should be normalised in the caller.
      */
     fun selectTactic(features: FloatArray): Tactic {
-        session?.let { sess ->
+        // Try lazy initialization if we have deferred session
+        val currentSession = if (session == "DEFERRED" && actualSession != "FAILED") {
+            initializeOnnxSession()
+        } else {
+            session
+        }
+
+        if (onnxAvailable && currentSession != null && currentSession != "FAILED") {
             try {
-                val env = OrtEnvironment.getEnvironment()
-                val inputTensor = OnnxTensor.createTensor(env, FloatBuffer.wrap(features), longArrayOf(1, features.size.toLong()))
-                val result = sess.run(mapOf(sess.inputNames.iterator().next() to inputTensor))
-                val logits = (result[0].value as Array<FloatArray>)[0]
-                val maxIndex = logits.indices.maxByOrNull { logits[it] } ?: 0
-                return Tactic.values().getOrElse(maxIndex) { Tactic.IDLE }
+                // Use reflection to perform ONNX inference
+                val ortEnvironmentClass = Class.forName("$onnxPackage.OrtEnvironment")
+                val onnxTensorClass = Class.forName("$onnxPackage.OnnxTensor")
+                val floatBufferClass = Class.forName("java.nio.FloatBuffer")
+
+                val getEnvironmentMethod = ortEnvironmentClass.getMethod("getEnvironment")
+                val env = getEnvironmentMethod.invoke(null)
+
+                // Create tensor using reflection
+                val createTensorMethod = onnxTensorClass.getMethod("createTensor", ortEnvironmentClass, floatBufferClass, LongArray::class.java)
+                val floatBuffer = java.nio.FloatBuffer.wrap(features)
+                val inputTensor = createTensorMethod.invoke(null, env, floatBuffer, longArrayOf(1, features.size.toLong()))
+
+                // Get input names and run session
+                val sessionClass = currentSession.javaClass
+                val inputNamesMethod = sessionClass.getMethod("getInputNames")
+                val inputNames = inputNamesMethod.invoke(currentSession) as Set<*>
+                val firstInputName = inputNames.iterator().next() as String
+
+                val runMethod = sessionClass.getMethod("run", Map::class.java)
+                val result = runMethod.invoke(currentSession, mapOf(firstInputName to inputTensor))
+
+                // Extract prediction from result (handle both scikit-learn and TensorFlow formats)
+                val resultClass = result.javaClass
+                val getMethod = resultClass.getMethod("get", Int::class.java)
+                val firstResult = getMethod.invoke(result, 0)
+
+                val valueMethod = firstResult.javaClass.getMethod("getValue")
+                val resultValue = valueMethod.invoke(firstResult)
+
+                val selectedTactic = when (resultValue) {
+                    // scikit-learn style: Long[] (class indices)
+                    is LongArray -> {
+                        val classIndex = resultValue[0].toInt()
+                        Tactic.values().getOrElse(classIndex) { Tactic.IDLE }
+                    }
+                    // TensorFlow style: Float[][] (logits/probabilities)
+                    is Array<*> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        val logits = (resultValue as Array<FloatArray>)[0]
+                        val maxIndex = logits.indices.maxByOrNull { logits[it] } ?: 0
+                        Tactic.values().getOrElse(maxIndex) { Tactic.IDLE }
+                    }
+                    else -> {
+                        logger.warn("Unknown ONNX output format: {}", resultValue?.javaClass?.name)
+                        Tactic.IDLE
+                    }
+                }
+
+                logger.debug("🧠 ML Model Decision: {}", selectedTactic)
+                return selectedTactic
             } catch (ex: Exception) {
+                logger.warn("ONNX inference failed, falling back to heuristics: {}", ex.message)
                 // Fall through to rule based fallback
             }
         }
-        // Fallback heuristics: low health -> kite; close players -> burst; otherwise summon.
+        // Enhanced fallback heuristics considering cooldowns
         val hpPct = features.getOrNull(0) ?: 1f
         val distance = features.getOrNull(1) ?: 16f
-        return when {
-            hpPct < 0.3f -> Tactic.KITE
-            distance < 4f -> Tactic.BURST_AOE
-            else -> Tactic.SUMMON
+        val nearbyCount = features.getOrNull(2) ?: 0f
+        val burstOnCooldown = features.getOrNull(3) ?: 0f
+        val kiteOnCooldown = features.getOrNull(4) ?: 0f  
+        val summonOnCooldown = features.getOrNull(5) ?: 0f
+        
+        val selectedTactic = when {
+            // Prioritize kiting when low health and not on cooldown
+            hpPct < 0.5f && kiteOnCooldown == 0f -> Tactic.KITE
+            // Use burst when players are close and not on cooldown  
+            distance < 8f && burstOnCooldown == 0f -> Tactic.BURST_AOE
+            // Summon when any players nearby and not on cooldown (싱글플레이 지원)
+            nearbyCount >= 1f && summonOnCooldown == 0f -> Tactic.SUMMON
+            // More aggressive fallback tactics
+            hpPct < 0.7f && kiteOnCooldown == 0f -> Tactic.KITE
+            distance < 12f && burstOnCooldown == 0f -> Tactic.BURST_AOE
+            summonOnCooldown == 0f -> Tactic.SUMMON
+            else -> Tactic.BURST_AOE  // 기본값도 더 공격적으로
         }
+        logger.debug("🎯 Heuristic Decision: {} (HP: {:.1f}%, Dist: {:.1f}, Players: {:.0f})", 
+                    selectedTactic, hpPct * 100, distance, nearbyCount)
+        return selectedTactic
     }
 
     /**
      * Attempts to locate the model in the config folder (config/boss_ai/boss_tactics.onnx).
      */
     private fun getModelPath(): Path? {
-        // Use the standard config directory.  In a development environment this
-        // resolves to ./run/config, and in production to the player's config
-        // folder.  We avoid referencing FMLPaths directly here to keep the
-        // dependency tree minimal; callers can place the file manually.
-        val relative = Path("config", "boss_ai", "boss_tactics.onnx")
-        val absolute = Path(System.getProperty("user.dir")).resolve(relative)
-        return absolute
+        // Try multiple possible locations for the ONNX model file
+        val userDir = System.getProperty("user.dir")
+        logger.info("ONNX search - user.dir: {}", userDir)
+
+        val possiblePaths = listOf(
+            // Development environment (runs/client/config)
+            Path(System.getProperty("user.dir"), "runs", "client", "config", "boss_ai", "boss_tactics.onnx"),
+            // Standard config directory
+            Path(System.getProperty("user.dir"), "config", "boss_ai", "boss_tactics.onnx"),
+            // Direct relative path
+            Path("config", "boss_ai", "boss_tactics.onnx")
+        )
+        // Log absolute forms of all candidates for easier debugging
+        runCatching {
+            val abs = possiblePaths.map { it.toAbsolutePath().normalize().toString() }
+            logger.info("ONNX search - candidate paths: {}", abs)
+        }
+        
+        for (path in possiblePaths) {
+            if (Files.exists(path)) {
+                logger.info("Found ONNX model at: {}", path)
+                return path
+            }
+        }
+        runCatching {
+            val abs = possiblePaths.map { it.toAbsolutePath().normalize().toString() }
+            logger.warn("ONNX model not found in any of the expected locations (absolute): {}", abs)
+        }.onFailure {
+            logger.warn("ONNX model not found; also failed to enumerate absolute paths: {}", it.message)
+        }
+        return null
     }
 }
