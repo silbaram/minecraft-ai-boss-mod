@@ -1,6 +1,6 @@
 {
   "required": true,
-  "package": "com.example.bossai.mixins",
+  "package": "com.github.silbaram.bossai.mixins",
   "compatibilityLevel": "JAVA_21",
   "refmap": "boss_ai.refmap.json",
   "mixins": [],

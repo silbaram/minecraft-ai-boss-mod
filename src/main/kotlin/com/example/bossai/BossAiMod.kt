@@ -1,4 +1,4 @@
-package com.example.bossai
+package com.github.silbaram.bossai
 
 import net.neoforged.fml.common.Mod
 import net.neoforged.neoforge.common.NeoForge

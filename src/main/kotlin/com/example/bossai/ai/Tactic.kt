@@ -1,4 +1,4 @@
-package com.example.bossai.ai
+package com.github.silbaram.bossai.ai
 
 /**
  * Enumeration of all tactics that our boss can execute.  These tactics

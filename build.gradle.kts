@@ -73,7 +73,7 @@ tasks.processResources {
 tasks.shadowJar {
     archiveClassifier.set("fat")
     configurations = listOf(project.configurations.runtimeClasspath.get())
-    relocate("ai.onnxruntime", "com.example.bossai.shaded.onnxruntime")
+    relocate("ai.onnxruntime", "com.github.silbaram.bossai.shaded.onnxruntime")
     enabled = project.findProperty("dist") == "true"
 }
 

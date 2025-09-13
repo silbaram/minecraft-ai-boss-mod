@@ -1,4 +1,4 @@
-package com.example.bossai
+package com.github.silbaram.bossai
 
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.MobCategory

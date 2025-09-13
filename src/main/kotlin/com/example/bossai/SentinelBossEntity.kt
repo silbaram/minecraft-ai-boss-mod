@@ -1,10 +1,10 @@
-package com.example.bossai
+package com.github.silbaram.bossai
 
-import com.example.bossai.ai.BurstAoeGoal
-import com.example.bossai.ai.KiteGoal
-import com.example.bossai.ai.SummonGoal
-import com.example.bossai.ai.Tactic
-import com.example.bossai.ai.TacticsModel
+import com.github.silbaram.bossai.ai.BurstAoeGoal
+import com.github.silbaram.bossai.ai.KiteGoal
+import com.github.silbaram.bossai.ai.SummonGoal
+import com.github.silbaram.bossai.ai.Tactic
+import com.github.silbaram.bossai.ai.TacticsModel
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier
 import net.minecraft.world.entity.ai.attributes.Attributes

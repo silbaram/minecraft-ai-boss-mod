@@ -1,6 +1,6 @@
-package com.example.bossai.ai
+package com.github.silbaram.bossai.ai
 
-import com.example.bossai.SentinelBossEntity
+import com.github.silbaram.bossai.SentinelBossEntity
 import net.minecraft.world.entity.ai.goal.Goal
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.monster.Zombie

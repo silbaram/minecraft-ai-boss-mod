@@ -1,4 +1,4 @@
-package com.example.bossai
+package com.github.silbaram.bossai
 
 import net.minecraft.world.item.CreativeModeTabs
 import net.minecraft.world.item.Item

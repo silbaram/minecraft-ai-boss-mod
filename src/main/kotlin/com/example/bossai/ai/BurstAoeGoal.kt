@@ -1,6 +1,6 @@
-package com.example.bossai.ai
+package com.github.silbaram.bossai.ai
 
-import com.example.bossai.SentinelBossEntity
+import com.github.silbaram.bossai.SentinelBossEntity
 import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.world.damagesource.DamageTypes
 import net.minecraft.world.entity.EntitySelector

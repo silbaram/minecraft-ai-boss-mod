@@ -1,6 +1,6 @@
-package com.example.bossai.client
+package com.github.silbaram.bossai.client
 
-import com.example.bossai.SentinelBossEntity
+import com.github.silbaram.bossai.SentinelBossEntity
 import net.minecraft.client.model.HumanoidModel
 import net.minecraft.client.model.geom.ModelLayers
 import net.minecraft.client.renderer.entity.EntityRendererProvider

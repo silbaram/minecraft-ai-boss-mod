@@ -1,4 +1,4 @@
-package com.example.bossai.ai
+package com.github.silbaram.bossai.ai
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -37,7 +37,7 @@ class TacticsModel {
         val sysProp = System.getProperty("boss_ai.dev.env")
         val devHint = sysProp == "true"
         val original = "ai.onnxruntime"
-        val shaded = "com.example.bossai.shaded.onnxruntime"
+    val shaded = "com.github.silbaram.bossai.shaded.onnxruntime"
 
         // Detection order:
         // 1. If dev hint set and original exists -> use original

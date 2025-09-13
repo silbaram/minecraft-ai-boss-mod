@@ -1,7 +1,7 @@
-package com.example.bossai.client
+package com.github.silbaram.bossai.client
 
-import com.example.bossai.BossAiMod
-import com.example.bossai.ModEntities
+import com.github.silbaram.bossai.BossAiMod
+import com.github.silbaram.bossai.ModEntities
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
