@@ -8,6 +8,7 @@ import org.gradle.kotlin.dsl.extra
 plugins {
     id("net.neoforged.gradle.userdev") version "7.0.140"
     kotlin("jvm") version "2.1.21"
+    kotlin("plugin.serialization") version "2.1.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
@@ -45,6 +46,13 @@ dependencies {
     runtimeOnly("com.microsoft.onnxruntime:onnxruntime:1.19.2")
     // Also include as compileOnly for IDE/compilation
     compileOnly("com.microsoft.onnxruntime:onnxruntime:1.19.2")
+    // JSON serialization for logging
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
+
+    // Test dependencies
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
@@ -113,6 +121,9 @@ tasks.processResources {
 tasks.matching { it.name == "runClient" }.configureEach {
     if (this is JavaExec) {
         systemProperty("boss_ai.dev.env", "true")
+        systemProperty("boss_ai.dev", "true")
+        systemProperty("boss_ai.debug.ai", "true")
+        systemProperty("boss_ai.profiling", "true")
         // Add ONNX Runtime JAR to bootclasspath for NeoForge module system
         val onnxJar = configurations.runtimeClasspath.get().find { it.name.contains("onnxruntime") }
         if (onnxJar != null) {

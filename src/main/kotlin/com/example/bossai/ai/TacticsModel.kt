@@ -17,6 +17,8 @@ class TacticsModel {
     private val logger = LogUtils.getLogger()
     private var onnxAvailable = false
     private var actualSession: Any? = null // For lazy initialization
+    private var lastFallbackReason: String? = null
+    private var fallbackOccurred = false
 
     // Prefer detecting available classes over relying solely on a system property (which may not propagate early enough).
     // Use ClassLoader.loadClass instead of Class.forName to avoid initialization
@@ -123,12 +125,14 @@ class TacticsModel {
             } else {
                 logger.warn("⚠️ ONNX model file not found at: {}", modelPath)
                 logger.info("🔄 Using heuristic AI mode")
+                recordFallback("Model file not found at: $modelPath")
                 return null
             }
         } catch (e: UnsatisfiedLinkError) {
             logger.error("❌ ONNX native library failed to load: {}", e.message)
             logger.info("🔄 Disabling ONNX permanently due to native library issue")
             logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Native Library Issue)")
+            recordFallback("Native library loading failed: ${e.message}")
             // Mark as permanently failed to avoid retrying
             actualSession = "FAILED"
             onnxAvailable = false
@@ -137,6 +141,7 @@ class TacticsModel {
             logger.error("❌ ONNX class initialization failed: {}", e.message)
             logger.info("🔄 Disabling ONNX permanently due to class initialization failure")
             logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Class Init Failure)")
+            recordFallback("Class initialization failed: ${e.message}")
             // Mark as permanently failed to avoid retrying
             actualSession = "FAILED"
             onnxAvailable = false
@@ -145,6 +150,7 @@ class TacticsModel {
             logger.error("❌ Failed to initialize ONNX session: {}", e.message)
             logger.info("🔄 Using heuristic AI mode")
             logger.debug("ONNX initialization error details:", e)
+            recordFallback("Session initialization failed: ${e.message}")
             actualSession = "FAILED"
             onnxAvailable = false
             return null
@@ -219,6 +225,7 @@ class TacticsModel {
                 return selectedTactic
             } catch (ex: Exception) {
                 logger.warn("ONNX inference failed, falling back to heuristics: {}", ex.message)
+                recordFallback("ONNX inference error: ${ex.message}")
                 // Fall through to rule based fallback
             }
         }
@@ -246,6 +253,123 @@ class TacticsModel {
         logger.debug("🎯 Heuristic Decision: {} (HP: {:.1f}%, Dist: {:.1f}, Players: {:.0f})", 
                     selectedTactic, hpPct * 100, distance, nearbyCount)
         return selectedTactic
+    }
+
+    /**
+     * ML 모드가 활성화되어 있는지 확인합니다.
+     *
+     * @return ML 모드 활성화 여부
+     */
+    fun isMLMode(): Boolean {
+        return onnxAvailable && (actualSession != null && actualSession != "FAILED")
+    }
+
+    /**
+     * 특정 전술에 대한 신뢰도 점수를 반환합니다 (ML 모드에서만).
+     *
+     * @param tactic 평가할 전술
+     * @param features 기능 벡터
+     * @return 신뢰도 점수 (0.0-1.0), ML 모드가 아닌 경우 0.0
+     */
+    fun getTacticConfidence(tactic: Tactic, features: FloatArray): Double {
+        if (!isMLMode()) {
+            return 0.0
+        }
+
+        try {
+            val currentSession = if (session == "DEFERRED" && actualSession != "FAILED") {
+                initializeOnnxSession()
+            } else {
+                session
+            }
+
+            if (currentSession != null && currentSession != "FAILED") {
+                // ONNX 추론을 통해 모든 전술의 확률 분포 획득
+                val probabilities = getFullPredictionProbabilities(features, currentSession)
+                val tacticIndex = tactic.ordinal
+                return if (tacticIndex < probabilities.size) {
+                    probabilities[tacticIndex].toDouble()
+                } else {
+                    0.0
+                }
+            }
+        } catch (e: Exception) {
+            logger.warn("Failed to get tactic confidence: {}", e.message)
+        }
+
+        return 0.0
+    }
+
+    /**
+     * ONNX 모델에서 전체 확률 분포를 획득합니다.
+     */
+    private fun getFullPredictionProbabilities(features: FloatArray, currentSession: Any): FloatArray {
+        val ortEnvironmentClass = Class.forName("$onnxPackage.OrtEnvironment")
+        val onnxTensorClass = Class.forName("$onnxPackage.OnnxTensor")
+        val floatBufferClass = Class.forName("java.nio.FloatBuffer")
+
+        val getEnvironmentMethod = ortEnvironmentClass.getMethod("getEnvironment")
+        val env = getEnvironmentMethod.invoke(null)
+
+        val createTensorMethod = onnxTensorClass.getMethod("createTensor", ortEnvironmentClass, floatBufferClass, LongArray::class.java)
+        val floatBuffer = java.nio.FloatBuffer.wrap(features)
+        val inputTensor = createTensorMethod.invoke(null, env, floatBuffer, longArrayOf(1, features.size.toLong()))
+
+        val sessionClass = currentSession.javaClass
+        val inputNamesMethod = sessionClass.getMethod("getInputNames")
+        val inputNames = inputNamesMethod.invoke(currentSession) as Set<*>
+        val firstInputName = inputNames.iterator().next() as String
+
+        val runMethod = sessionClass.getMethod("run", Map::class.java)
+        val result = runMethod.invoke(currentSession, mapOf(firstInputName to inputTensor))
+
+        val resultClass = result.javaClass
+        val getMethod = resultClass.getMethod("get", Int::class.java)
+        val firstResult = getMethod.invoke(result, 0)
+
+        val valueMethod = firstResult.javaClass.getMethod("getValue")
+        val resultValue = valueMethod.invoke(firstResult)
+
+        return when (resultValue) {
+            is Array<*> -> {
+                @Suppress("UNCHECKED_CAST")
+                val logits = (resultValue as Array<FloatArray>)[0]
+                // Convert logits to probabilities using softmax
+                softmax(logits)
+            }
+            else -> {
+                // 다른 형식의 경우 균등 분포 반환
+                FloatArray(Tactic.values().size) { 1f / Tactic.values().size }
+            }
+        }
+    }
+
+    /**
+     * Softmax 함수 구현 (로짓을 확률로 변환)
+     */
+    private fun softmax(logits: FloatArray): FloatArray {
+        val maxLogit = logits.maxOrNull() ?: 0f
+        val expValues = logits.map { kotlin.math.exp((it - maxLogit).toDouble()).toFloat() }
+        val sumExp = expValues.sum()
+        return expValues.map { it / sumExp }.toFloatArray()
+    }
+
+    /**
+     * 폴백 발생 여부를 반환합니다.
+     */
+    fun hasFallbackOccurred(): Boolean = fallbackOccurred
+
+    /**
+     * 마지막 폴백 이유를 반환합니다.
+     */
+    fun getLastFallbackReason(): String? = lastFallbackReason
+
+    /**
+     * 폴백 정보를 리셋합니다.
+     */
+    fun resetFallbackInfo() {
+        fallbackOccurred = false
+        lastFallbackReason = null
     }
 
     /**
@@ -283,5 +407,13 @@ class TacticsModel {
             logger.warn("ONNX model not found; also failed to enumerate absolute paths: {}", it.message)
         }
         return null
+    }
+
+    /**
+     * 폴백 발생을 기록합니다.
+     */
+    private fun recordFallback(reason: String) {
+        fallbackOccurred = true
+        lastFallbackReason = reason
     }
 }

@@ -36,6 +36,11 @@ logs/
 *.bak
 *.swp
 *~
+
+# AI
 /CLAUDE.md
 /GEMINI.md
 /AGENTS.md
+/.claude/
+/.specify/
+/specs/
