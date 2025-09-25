@@ -64,7 +64,7 @@ class TacticsModel {
             logger.info("System property boss_ai.dev.env = {}", System.getProperty("boss_ai.dev.env"))
             logger.info("Class presence - ai.onnxruntime: {}, shaded: {}",
                 classExists("ai.onnxruntime.OrtEnvironment"),
-                classExists("com.example.bossai.shaded.onnxruntime.OrtEnvironment")
+                classExists("com.github.silbaram.bossai.shaded.onnxruntime.OrtEnvironment")
             )
 
             // Defer ONNX initialization - only check if classes exist without initializing

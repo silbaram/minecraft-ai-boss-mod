@@ -6,7 +6,9 @@
       "Bash(java:*)",
       "Bash(jar:*)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(mv:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

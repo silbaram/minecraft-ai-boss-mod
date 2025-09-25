@@ -62,7 +62,7 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
         executed = true
         val executionStart = System.nanoTime()
 
-        logger.info("[BURST_AOE] Executing burst AOE attack at position (${String.format("%.1f", boss.x)}, ${String.format("%.1f", boss.y)}, ${String.format("%.1f", boss.z)})")
+        logger.info("[BURST_AOE] Executing burst AOE attack at position ({:.1f}, {:.1f}, {:.1f})", boss.x, boss.y, boss.z)
 
         // Create an axis aligned bounding box around the boss
         val area: AABB = boss.boundingBox.inflate(BURST_AOE_RADIUS)
@@ -78,7 +78,7 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
             val distance = boss.distanceTo(player).coerceAtLeast(1f)
             val scaledDamage = (BASE_DAMAGE * (4f / distance)).coerceIn(4f, BASE_DAMAGE)
 
-            val source = player.damageSources().mobAttack(boss)
+            val source = boss.damageSources().mobAttack(boss)
             val damageDealt = if (player.hurt(source, scaledDamage)) scaledDamage else 0f
 
             // Add knockback effect

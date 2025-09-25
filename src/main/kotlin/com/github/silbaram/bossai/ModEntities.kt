@@ -8,21 +8,21 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import net.neoforged.neoforge.registries.DeferredHolder
 import java.util.function.Supplier
 
+
 /**
- * Holds the registry objects for our custom entities.  Entities must be
- * registered via a [`DeferredRegister`][DeferredRegister] to ensure they
- * are available at the correct time in the mod lifecycle【850544949770670†L90-L113】.
+ * 커스텀 엔티티들의 레지스트리 객체를 보관합니다. 엔티티는 모드 라이프사이클의
+ * 올바른 시점에 사용 가능하도록 [`DeferredRegister`][DeferredRegister]를 통해
+ * 등록되어야 합니다.
  */
 object ModEntities {
-    // A DeferredRegister for all entity types belonging to this mod.  The
-    // namespace (mod ID) is supplied via the mod ID constant.
+    // 이 모드에 속하는 모든 엔티티 타입을 위한 DeferredRegister입니다.
+    // 네임스페이스(모드 ID)는 BossAiMod.MOD_ID 상수를 통해 제공됩니다.
     val ENTITY_TYPES: DeferredRegister<EntityType<*>> =
         DeferredRegister.create(BuiltInRegistries.ENTITY_TYPE, BossAiMod.MOD_ID)
 
     /**
-     * Registration entry for our Sentinel Boss entity.  The `registerEntityType`
-     * shorthand creates the EntityType and registers it under the given name
-     * 【850544949770670†L174-L182】.
+     * Sentinel 보스 엔티티의 등록 항목입니다. `registerEntityType` 약식은
+     * EntityType을 생성하고 주어진 이름으로 등록합니다.
      */
     val SENTINEL_BOSS: DeferredHolder<EntityType<*>, EntityType<SentinelBossEntity>> =
         ENTITY_TYPES.register("sentinel_boss", Supplier {
