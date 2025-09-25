@@ -65,6 +65,33 @@ This mod uses **ONNX Runtime** for real-time boss tactic decisions. When models 
 - Check console for AI mode: "MACHINE LEARNING" vs "RULE-BASED HEURISTICS"
 - ONNX Runtime 1.19.2 provides better Windows compatibility than newer versions
 
+### 📝 **AI Logging Configuration**
+
+The Boss AI system provides comprehensive logging of AI decision-making processes. Configure logging through JVM system properties.
+
+**Current Default Settings (in gradle.properties):**
+```properties
+org.gradle.jvmargs=-Xmx8G -Dboss_ai.dev=false -Dboss_ai.logging.locale=ko
+```
+
+**Available Options:**
+- `boss_ai.logging.enabled=true/false` - Enable/disable all AI logging
+- `boss_ai.logging.locale=ko/en` - Set log language (Korean/English)
+- `boss_ai.dev=false/true` - Development mode (enables verbose DEBUG logs)
+- `boss_ai.logging.rate_limit_interval=5000` - Rate limit interval in milliseconds
+- `boss_ai.logging.max_logs_per_interval=3` - Max logs per interval
+- `boss_ai.logging.performance_threshold=50.0` - Performance warning threshold (ms)
+
+**Example Log Output:**
+```
+🎯 Sentinel Boss | 💥 IDLE → BURST_AOE | ❤️ 59.8% | 📏 3.4m | 🤖ML | ⏱️ 0.6ms
+```
+
+**Configuration Methods:**
+1. **gradle.properties (Recommended)**: Add to `org.gradle.jvmargs=` line
+2. **Command Line**: `./gradlew runClient -Dboss_ai.dev=false`
+3. **IDE**: Add to VM options in run configuration
+
 ### 📁 **Project Structure**
 
 ```
@@ -146,6 +173,33 @@ Kotlin으로 작성된 Minecraft NeoForge 모드로, ONNX 머신러닝 모델을
 - DLL 초기화 실패 시 자동으로 규칙 기반 AI로 폴백
 - 콘솔에서 AI 모드 확인: "MACHINE LEARNING" vs "RULE-BASED HEURISTICS"
 - ONNX Runtime 1.19.2가 최신 버전보다 Windows 호환성이 우수함
+
+### 📝 **AI 로깅 설정**
+
+Boss AI 시스템은 AI 의사결정 과정에 대한 포괄적인 로깅을 제공합니다. JVM 시스템 속성을 통해 로깅을 설정할 수 있습니다.
+
+**현재 기본 설정 (gradle.properties에 설정됨):**
+```properties
+org.gradle.jvmargs=-Xmx8G -Dboss_ai.dev=false -Dboss_ai.logging.locale=ko
+```
+
+**사용 가능한 옵션:**
+- `boss_ai.logging.enabled=true/false` - 모든 AI 로깅 활성화/비활성화
+- `boss_ai.logging.locale=ko/en` - 로그 언어 설정 (한국어/영어)
+- `boss_ai.dev=false/true` - 개발 모드 (상세한 DEBUG 로그 활성화)
+- `boss_ai.logging.rate_limit_interval=5000` - 속도 제한 간격 (밀리초)
+- `boss_ai.logging.max_logs_per_interval=3` - 간격당 최대 로그 수
+- `boss_ai.logging.performance_threshold=50.0` - 성능 경고 임계값 (밀리초)
+
+**로그 출력 예시:**
+```
+🎯 센티넬 보스 | 💥 IDLE → BURST_AOE | ❤️ 59.8% | 📏 3.4m | 🤖ML | ⏱️ 0.6ms
+```
+
+**설정 방법:**
+1. **gradle.properties (권장)**: `org.gradle.jvmargs=` 줄에 추가
+2. **명령줄**: `./gradlew runClient -Dboss_ai.dev=false`
+3. **IDE**: 실행 구성에서 VM 옵션에 추가
 
 ### 📁 **프로젝트 구조**
 

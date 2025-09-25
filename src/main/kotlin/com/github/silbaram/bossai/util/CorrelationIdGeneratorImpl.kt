@@ -55,6 +55,21 @@ class CorrelationIdGeneratorImpl : CorrelationIdGenerator {
     }
 
     /**
+     * 새로운 세션을 시작합니다.
+     */
+    override fun startNewSession(): String {
+        val newSessionId = generateSessionId()
+        return newSessionId
+    }
+
+    /**
+     * 다음 의사결정 시퀀스 번호를 반환합니다.
+     */
+    override fun getNextDecisionSequence(): Long {
+        return decisionSequence.incrementAndGet()
+    }
+
+    /**
      * 엔티티 ID에서 특수 문자를 제거하고 안전한 형식으로 변환합니다.
      */
     private fun sanitizeEntityId(entityId: String): String {
@@ -85,4 +100,14 @@ interface CorrelationIdGenerator {
      * 현재 세션 ID를 반환합니다.
      */
     fun getCurrentSessionId(): String
+
+    /**
+     * 새로운 세션을 시작합니다.
+     */
+    fun startNewSession(): String
+
+    /**
+     * 다음 의사결정 시퀀스 번호를 반환합니다.
+     */
+    fun getNextDecisionSequence(): Long
 }

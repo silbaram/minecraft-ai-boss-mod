@@ -32,7 +32,6 @@ class LogFormatterImpl : LogFormatter {
             is TacticDecisionEntry -> formatTacticDecisionAsJson(entry)
             is ModeFallbackEntry -> formatModeFallbackAsJson(entry)
             is PerformanceWarningEntry -> formatPerformanceWarningAsJson(entry)
-            else -> formatGenericEntryAsJson(entry)
         }
     }
 
@@ -48,7 +47,6 @@ class LogFormatterImpl : LogFormatter {
             is TacticDecisionEntry -> formatTacticDecisionAsHumanReadable(entry, locale)
             is ModeFallbackEntry -> formatModeFallbackAsHumanReadable(entry, locale)
             is PerformanceWarningEntry -> formatPerformanceWarningAsHumanReadable(entry, locale)
-            else -> formatGenericEntryAsHumanReadable(entry, locale)
         }
     }
 
@@ -122,41 +120,50 @@ class LogFormatterImpl : LogFormatter {
         return json.encodeToString(jsonEntry)
     }
 
-    private fun formatGenericEntryAsJson(entry: LogEntry): String {
-        val jsonEntry = GenericLogJsonEntry(
-            event_type = entry.eventType,
-            timestamp = dateTimeFormatter.format(entry.timestamp),
-            entity_id = entry.entityId,
-            correlation_id = entry.correlationId
-        )
-        return json.encodeToString(jsonEntry)
-    }
 
     private fun formatTacticDecisionAsHumanReadable(entry: TacticDecisionEntry, locale: String): String {
         return when (locale.lowercase()) {
             "ko" -> {
                 val modeText = when (entry.aiMode) {
-                    "MACHINE_LEARNING" -> "머신러닝"
-                    "RULE_BASED_HEURISTICS" -> "휴리스틱"
+                    "MACHINE_LEARNING" -> "🤖ML"
+                    "RULE_BASED_HEURISTICS" -> "🧠규칙"
                     else -> entry.aiMode
                 }
-                "[정보] AI_결정: ${entry.entityId} 전술 변경: ${entry.previousTactic.name} -> ${entry.selectedTactic.name} | " +
-                        "체력: ${(entry.features.getOrNull(0)?.times(100) ?: 0.0)}% | " +
-                        "거리: ${entry.features.getOrNull(1) ?: 0.0}블록 | " +
-                        "모드: $modeText | " +
-                        "실행시간: ${String.format("%.1f", entry.performanceMetrics.totalTimeMs)}ms"
+                val hpPercent = String.format("%.1f", (entry.features.getOrNull(0)?.times(100) ?: 0.0))
+                val distance = String.format("%.1f", (entry.features.getOrNull(1) ?: 0.0))
+                val duration = String.format("%.1f", entry.performanceMetrics.totalTimeMs)
+
+                val tacticEmoji = when (entry.selectedTactic.name) {
+                    "IDLE" -> "😴"
+                    "BURST_AOE" -> "💥"
+                    "KITE" -> "🏃"
+                    "SUMMON" -> "👥"
+                    else -> "⚔️"
+                }
+
+                "🎯 센티넬 보스 | $tacticEmoji ${entry.previousTactic.name} → ${entry.selectedTactic.name} | " +
+                        "❤️ $hpPercent% | 📏 ${distance}m | $modeText | ⏱️ ${duration}ms"
             }
             else -> { // "en" or default
                 val modeText = when (entry.aiMode) {
-                    "MACHINE_LEARNING" -> "ML"
-                    "RULE_BASED_HEURISTICS" -> "Heuristic"
+                    "MACHINE_LEARNING" -> "🤖ML"
+                    "RULE_BASED_HEURISTICS" -> "🧠Rules"
                     else -> entry.aiMode
                 }
-                "[INFO] AI_DECISION: ${entry.entityId} switching tactics: ${entry.previousTactic.name} -> ${entry.selectedTactic.name} | " +
-                        "HP: ${(entry.features.getOrNull(0)?.times(100) ?: 0.0)}% | " +
-                        "Distance: ${entry.features.getOrNull(1) ?: 0.0} blocks | " +
-                        "Mode: $modeText | " +
-                        "Duration: ${String.format("%.1f", entry.performanceMetrics.totalTimeMs)}ms"
+                val hpPercent = String.format("%.1f", (entry.features.getOrNull(0)?.times(100) ?: 0.0))
+                val distance = String.format("%.1f", (entry.features.getOrNull(1) ?: 0.0))
+                val duration = String.format("%.1f", entry.performanceMetrics.totalTimeMs)
+
+                val tacticEmoji = when (entry.selectedTactic.name) {
+                    "IDLE" -> "😴"
+                    "BURST_AOE" -> "💥"
+                    "KITE" -> "🏃"
+                    "SUMMON" -> "👥"
+                    else -> "⚔️"
+                }
+
+                "🎯 Sentinel Boss | $tacticEmoji ${entry.previousTactic.name} → ${entry.selectedTactic.name} | " +
+                        "❤️ $hpPercent% | 📏 ${distance}m | $modeText | ⏱️ ${duration}ms"
             }
         }
     }
@@ -164,10 +171,10 @@ class LogFormatterImpl : LogFormatter {
     private fun formatModeFallbackAsHumanReadable(entry: ModeFallbackEntry, locale: String): String {
         return when (locale.lowercase()) {
             "ko" -> {
-                "[경고] AI_모드_폴백: ${entry.entityId} | ${entry.fromMode} -> ${entry.toMode} | 이유: ${entry.reason}"
+                "⚠️ AI 모드 변경: ${entry.fromMode} → ${entry.toMode} | 이유: ${entry.reason}"
             }
             else -> { // "en" or default
-                "[WARN] AI_MODE_FALLBACK: ${entry.entityId} | ${entry.fromMode} -> ${entry.toMode} | Reason: ${entry.reason}"
+                "⚠️ AI Mode Fallback: ${entry.fromMode} → ${entry.toMode} | Reason: ${entry.reason}"
             }
         }
     }
@@ -175,24 +182,18 @@ class LogFormatterImpl : LogFormatter {
     private fun formatPerformanceWarningAsHumanReadable(entry: PerformanceWarningEntry, locale: String): String {
         return when (locale.lowercase()) {
             "ko" -> {
-                "[경고] AI_성능_경고: ${entry.entityId} | 작업: ${entry.operation} | " +
-                        "소요시간: ${String.format("%.1f", entry.durationMs)}ms (임계값: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
+                "⚡ 성능 경고: ${entry.operation} | " +
+                        "⏱️ ${String.format("%.1f", entry.durationMs)}ms (한계: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
                         "영향: ${entry.impact}"
             }
             else -> { // "en" or default
-                "[WARN] AI_PERFORMANCE_WARNING: ${entry.entityId} | Operation: ${entry.operation} | " +
-                        "Duration: ${String.format("%.1f", entry.durationMs)}ms (threshold: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
+                "⚡ Performance Warning: ${entry.operation} | " +
+                        "⏱️ ${String.format("%.1f", entry.durationMs)}ms (threshold: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
                         "Impact: ${entry.impact}"
             }
         }
     }
 
-    private fun formatGenericEntryAsHumanReadable(entry: LogEntry, locale: String): String {
-        return when (locale.lowercase()) {
-            "ko" -> "[정보] ${entry.eventType}: ${entry.entityId} | ${dateTimeFormatter.format(entry.timestamp)}"
-            else -> "[INFO] ${entry.eventType}: ${entry.entityId} | ${dateTimeFormatter.format(entry.timestamp)}"
-        }
-    }
 }
 
 // JSON 직렬화를 위한 데이터 클래스들
@@ -273,13 +274,6 @@ private data class PerformanceWarningDataJson(
     val suggested_action: String
 )
 
-@Serializable
-private data class GenericLogJsonEntry(
-    val event_type: String,
-    val timestamp: String,
-    val entity_id: String,
-    val correlation_id: String
-)
 
 /**
  * LogFormatter 인터페이스

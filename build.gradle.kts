@@ -53,10 +53,16 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-engine:5.10.0")
     testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.0")
+    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit5"))
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.processResources {
@@ -121,7 +127,7 @@ tasks.processResources {
 tasks.matching { it.name == "runClient" }.configureEach {
     if (this is JavaExec) {
         systemProperty("boss_ai.dev.env", "true")
-        systemProperty("boss_ai.dev", "true")
+        systemProperty("boss_ai.dev", project.findProperty("boss_ai.dev") ?: "false")
         systemProperty("boss_ai.debug.ai", "true")
         systemProperty("boss_ai.profiling", "true")
         // Add ONNX Runtime JAR to bootclasspath for NeoForge module system

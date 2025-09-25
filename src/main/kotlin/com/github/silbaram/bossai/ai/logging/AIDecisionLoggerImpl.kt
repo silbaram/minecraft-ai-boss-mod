@@ -218,6 +218,39 @@ class AIDecisionLoggerImpl(
     }
 
     /**
+     * 특정 엔티티의 로그 엔트리들을 가져옵니다.
+     */
+    override fun getLogEntriesForEntity(entityId: String, limit: Int): List<LogEntry> {
+        val entityLogs = logEntriesByEntity[entityId] ?: return emptyList()
+        return entityLogs.takeLast(limit)
+    }
+
+    /**
+     * 모든 로그 엔트리들을 가져옵니다.
+     */
+    override fun getAllLogEntries(limit: Int): List<LogEntry> {
+        val list = logEntries.toList()
+        return if (list.size <= limit) list else list.takeLast(limit)
+    }
+
+    /**
+     * 로그 엔트리들을 제거합니다.
+     */
+    override fun clearLogEntries(olderThan: java.time.Instant?) {
+        if (olderThan == null) {
+            // 모든 엔트리 제거
+            logEntries.clear()
+            logEntriesByEntity.clear()
+        } else {
+            // 지정된 시간보다 오래된 엔트리들만 제거
+            logEntries.removeAll { it.timestamp.isBefore(olderThan) }
+            logEntriesByEntity.values.forEach { entityLogs ->
+                entityLogs.removeAll { it.timestamp.isBefore(olderThan) }
+            }
+        }
+    }
+
+    /**
      * 로깅 시스템의 현재 상태를 반환합니다.
      */
     override fun getLoggingStatus(): LoggingStatus {
@@ -307,6 +340,12 @@ interface AIDecisionLogger {
     )
 
     fun getLogEntries(entityId: String, correlationId: String? = null): List<LogEntry>
+
+    fun getLogEntriesForEntity(entityId: String, limit: Int = 100): List<LogEntry>
+
+    fun getAllLogEntries(limit: Int = 100): List<LogEntry>
+
+    fun clearLogEntries(olderThan: java.time.Instant? = null)
 
     fun getLoggingStatus(): LoggingStatus
 }

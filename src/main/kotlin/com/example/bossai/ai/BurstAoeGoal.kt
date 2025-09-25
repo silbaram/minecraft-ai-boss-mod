@@ -11,10 +11,9 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.InteractionHand
 
 /**
- * A simple goal that performs a one‑time area of effect attack.  When executed
- * it damages all nearby players within a small radius.  The goal finishes
- * immediately after the attack and must be re‑added to the goal selector for
- * subsequent use.
+ * 단일 실행 범위 공격을 수행하는 간단한 목표입니다.
+ * 실행되면 작은 반경 내의 모든 플레이어에게 피해를 줍니다.
+ * 공격 직후 목표는 즉시 종료되며, 이후 다시 사용하려면 목표 셀렉터에 재등록해야 합니다.
  */
 class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
     private var executed = false
