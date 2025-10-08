@@ -52,7 +52,9 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
         val canActivate = target != null && boss.distanceTo(target) < MAX_TARGET_DISTANCE
 
         if (canActivate) {
-            logger.debug("[BURST_AOE] Goal activation: target={}, distance={:.1f}", target?.name?.string ?: "null", target?.let { boss.distanceTo(it) } ?: -1f)
+            val name = target?.name?.string ?: "-"
+            val distStr = target?.let { String.format("%.1f", boss.distanceTo(it)) } ?: "-"
+            logger.debug("💥 [BURST] Activate — target ${name} | dist ${distStr}m")
         }
 
         return canActivate
@@ -62,13 +64,16 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
         executed = true
         val executionStart = System.nanoTime()
 
-        logger.info("[BURST_AOE] Executing burst AOE attack at position ({:.1f}, {:.1f}, {:.1f})", boss.x, boss.y, boss.z)
+    val xStr = String.format("%.1f", boss.x)
+    val yStr = String.format("%.1f", boss.y)
+    val zStr = String.format("%.1f", boss.z)
+    logger.info("💥 [BURST] Execute — pos (${xStr}, ${yStr}, ${zStr})")
 
         // Create an axis aligned bounding box around the boss
         val area: AABB = boss.boundingBox.inflate(BURST_AOE_RADIUS)
         val players: List<Player> = boss.level().getEntitiesOfClass(Player::class.java, area, EntitySelector.NO_SPECTATORS)
 
-        logger.debug("[BURST_AOE] Found {} players in radius {:.1f}", players.size, BURST_AOE_RADIUS)
+    logger.debug("💥 [BURST] Targets — ${players.size} players | radius ${String.format("%.1f", BURST_AOE_RADIUS)}m")
 
         var totalDamageDealt = 0f
         var playersAffected = 0
@@ -90,16 +95,14 @@ class BurstAoeGoal(private val boss: SentinelBossEntity) : Goal() {
             totalDamageDealt += damageDealt
             playersAffected++
 
-            logger.debug("[BURST_AOE] Hit player {} at distance {:.1f}, damage={:.1f}",
-                player.name.string, distance, damageDealt)
+            logger.debug("💥 [BURST] Hit — ${player.name.string} | dist ${String.format("%.1f", distance)}m | dmg ${String.format("%.1f", damageDealt)}")
         }
 
         // Play swing animation for visual feedback
         boss.swing(InteractionHand.MAIN_HAND)
 
         val executionTime = (System.nanoTime() - executionStart) / 1_000_000.0
-        logger.info("[BURST_AOE] Attack completed: {} players affected, {:.1f} total damage, {:.1f}ms execution time",
-            playersAffected, totalDamageDealt, executionTime)
+        logger.info("✅ [BURST] Done — ${playersAffected} players | total ${String.format("%.1f", totalDamageDealt)} dmg | ${String.format("%.1f", executionTime)}ms")
     }
 
     override fun canContinueToUse(): Boolean = false

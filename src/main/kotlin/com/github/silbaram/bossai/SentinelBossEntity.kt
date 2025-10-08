@@ -42,7 +42,7 @@ class SentinelBossEntity(type: EntityType<out SentinelBossEntity>, level: Level)
     private val logFormatter = LogFormatterImpl()
     private val aiDecisionLogger = AIDecisionLoggerImpl(logFormatter, rateLimitedLogger)
     private var decisionCycleNumber = 0L
-    
+
     // Tactic cooldown system
     private val tacticCooldowns = mutableMapOf<Tactic, Int>()
     private val tacticHistory = mutableListOf<Tactic>()
@@ -108,11 +108,6 @@ class SentinelBossEntity(type: EntityType<out SentinelBossEntity>, level: Level)
             "fallback_correlation_${System.currentTimeMillis()}_${entityId.hashCode()}"
         }
 
-        // 디버그: 생성된 값들 확인 (개발 모드에서만)
-        if (System.getProperty("boss_ai.dev", "false").toBoolean()) {
-            logger.info("DEBUG: entityId='$entityId' (length=${entityId.length}), correlationId='$correlationId' (length=${correlationId.length}), safeUuid='$safeUuid'")
-        }
-
         val startTime = System.nanoTime()
         val memoryBefore = getMemoryUsageMB()
 
@@ -170,11 +165,6 @@ class SentinelBossEntity(type: EntityType<out SentinelBossEntity>, level: Level)
 
         // 5. AI 결정 로깅
         decisionCycleNumber++
-
-        // 디버그: 로깅 메서드 호출 직전의 파라미터 값들 확인 (개발 모드에서만)
-        if (System.getProperty("boss_ai.dev", "false").toBoolean()) {
-            logger.info("DEBUG: Before logging - entityId='$entityId' (length=${entityId.length}), correlationId='$correlationId' (length=${correlationId.length})")
-        }
 
         aiDecisionLogger.logTacticDecision(
             entityId = entityId,

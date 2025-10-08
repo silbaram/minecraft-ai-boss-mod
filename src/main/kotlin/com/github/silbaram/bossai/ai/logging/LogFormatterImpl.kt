@@ -21,6 +21,11 @@ class LogFormatterImpl : LogFormatter {
 
     private val dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
+    private val localeDictionary = LocaleDictionary(LoggingConfig.loadConfig().defaultLocale)
+    private val tacticDecisionHumanFormatter = TacticDecisionHumanReadableFormatter(localeDictionary)
+    private val modeFallbackHumanFormatter = ModeFallbackHumanReadableFormatter(localeDictionary)
+    private val performanceWarningHumanFormatter = PerformanceWarningHumanReadableFormatter(localeDictionary)
+
     /**
      * 로그 엔트리를 JSON 형식으로 포맷팅합니다.
      *
@@ -43,10 +48,11 @@ class LogFormatterImpl : LogFormatter {
      * @return 포맷된 문자열
      */
     override fun formatAsHumanReadable(entry: LogEntry, locale: String): String {
+        val normalizedLocale = locale.lowercase()
         return when (entry) {
-            is TacticDecisionEntry -> formatTacticDecisionAsHumanReadable(entry, locale)
-            is ModeFallbackEntry -> formatModeFallbackAsHumanReadable(entry, locale)
-            is PerformanceWarningEntry -> formatPerformanceWarningAsHumanReadable(entry, locale)
+            is TacticDecisionEntry -> tacticDecisionHumanFormatter.format(entry, normalizedLocale)
+            is ModeFallbackEntry -> modeFallbackHumanFormatter.format(entry, normalizedLocale)
+            is PerformanceWarningEntry -> performanceWarningHumanFormatter.format(entry, normalizedLocale)
         }
     }
 
@@ -118,80 +124,6 @@ class LogFormatterImpl : LogFormatter {
             )
         )
         return json.encodeToString(jsonEntry)
-    }
-
-
-    private fun formatTacticDecisionAsHumanReadable(entry: TacticDecisionEntry, locale: String): String {
-        return when (locale.lowercase()) {
-            "ko" -> {
-                val modeText = when (entry.aiMode) {
-                    "MACHINE_LEARNING" -> "🤖ML"
-                    "RULE_BASED_HEURISTICS" -> "🧠규칙"
-                    else -> entry.aiMode
-                }
-                val hpPercent = String.format("%.1f", (entry.features.getOrNull(0)?.times(100) ?: 0.0))
-                val distance = String.format("%.1f", (entry.features.getOrNull(1) ?: 0.0))
-                val duration = String.format("%.1f", entry.performanceMetrics.totalTimeMs)
-
-                val tacticEmoji = when (entry.selectedTactic.name) {
-                    "IDLE" -> "😴"
-                    "BURST_AOE" -> "💥"
-                    "KITE" -> "🏃"
-                    "SUMMON" -> "👥"
-                    else -> "⚔️"
-                }
-
-                "🎯 센티넬 보스 | $tacticEmoji ${entry.previousTactic.name} → ${entry.selectedTactic.name} | " +
-                        "❤️ $hpPercent% | 📏 ${distance}m | $modeText | ⏱️ ${duration}ms"
-            }
-            else -> { // "en" or default
-                val modeText = when (entry.aiMode) {
-                    "MACHINE_LEARNING" -> "🤖ML"
-                    "RULE_BASED_HEURISTICS" -> "🧠Rules"
-                    else -> entry.aiMode
-                }
-                val hpPercent = String.format("%.1f", (entry.features.getOrNull(0)?.times(100) ?: 0.0))
-                val distance = String.format("%.1f", (entry.features.getOrNull(1) ?: 0.0))
-                val duration = String.format("%.1f", entry.performanceMetrics.totalTimeMs)
-
-                val tacticEmoji = when (entry.selectedTactic.name) {
-                    "IDLE" -> "😴"
-                    "BURST_AOE" -> "💥"
-                    "KITE" -> "🏃"
-                    "SUMMON" -> "👥"
-                    else -> "⚔️"
-                }
-
-                "🎯 Sentinel Boss | $tacticEmoji ${entry.previousTactic.name} → ${entry.selectedTactic.name} | " +
-                        "❤️ $hpPercent% | 📏 ${distance}m | $modeText | ⏱️ ${duration}ms"
-            }
-        }
-    }
-
-    private fun formatModeFallbackAsHumanReadable(entry: ModeFallbackEntry, locale: String): String {
-        return when (locale.lowercase()) {
-            "ko" -> {
-                "⚠️ AI 모드 변경: ${entry.fromMode} → ${entry.toMode} | 이유: ${entry.reason}"
-            }
-            else -> { // "en" or default
-                "⚠️ AI Mode Fallback: ${entry.fromMode} → ${entry.toMode} | Reason: ${entry.reason}"
-            }
-        }
-    }
-
-    private fun formatPerformanceWarningAsHumanReadable(entry: PerformanceWarningEntry, locale: String): String {
-        return when (locale.lowercase()) {
-            "ko" -> {
-                "⚡ 성능 경고: ${entry.operation} | " +
-                        "⏱️ ${String.format("%.1f", entry.durationMs)}ms (한계: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
-                        "영향: ${entry.impact}"
-            }
-            else -> { // "en" or default
-                "⚡ Performance Warning: ${entry.operation} | " +
-                        "⏱️ ${String.format("%.1f", entry.durationMs)}ms (threshold: ${String.format("%.1f", entry.thresholdMs)}ms) | " +
-                        "Impact: ${entry.impact}"
-            }
-        }
     }
 
 }
@@ -282,3 +214,140 @@ interface LogFormatter {
     fun formatAsJson(entry: LogEntry): String
     fun formatAsHumanReadable(entry: LogEntry, locale: String = "en"): String
 }
+
+private interface HumanReadableEntryFormatter<in T : LogEntry> {
+    fun format(entry: T, locale: String): String
+}
+
+private class TacticDecisionHumanReadableFormatter(
+    private val dictionary: LocaleDictionary
+) : HumanReadableEntryFormatter<TacticDecisionEntry> {
+
+    private val tacticEmojis = mapOf(
+        "IDLE" to "😴",
+        "BURST_AOE" to "💥",
+        "KITE" to "🏃",
+        "SUMMON" to "👥"
+    )
+
+    override fun format(entry: TacticDecisionEntry, locale: String): String {
+        val bossLabel = dictionary.bossLabel(locale)
+        val emoji = tacticEmojis[entry.selectedTactic.name] ?: "⚔️"
+        val tacticLabel = dictionary.tacticLabel(entry.selectedTactic.name, locale)
+        val modeText = dictionary.modeLabel(entry.aiMode, locale)
+        val hpPercent = formatNumber(entry.features.getOrNull(0)?.times(100f)?.toDouble() ?: 0.0)
+        val distance = formatNumber(entry.features.getOrNull(1)?.toDouble() ?: 0.0)
+        val duration = formatNumber(entry.performanceMetrics.totalTimeMs)
+
+        return "$bossLabel | $emoji[$tacticLabel] ${entry.previousTactic.name} → ${entry.selectedTactic.name} | " +
+                "❤️ $hpPercent% | 📏 ${distance}m | $modeText | ⏱️ ${duration}ms"
+    }
+
+    private fun formatNumber(value: Double): String = String.format("%.1f", value)
+}
+
+private class ModeFallbackHumanReadableFormatter(
+    private val dictionary: LocaleDictionary
+) : HumanReadableEntryFormatter<ModeFallbackEntry> {
+
+    override fun format(entry: ModeFallbackEntry, locale: String): String {
+        val prefix = dictionary.modeFallbackPrefix(locale)
+        val reasonLabel = dictionary.modeFallbackReasonLabel(locale)
+        return "$prefix: ${entry.fromMode} → ${entry.toMode} | $reasonLabel: ${entry.reason}"
+    }
+}
+
+private class PerformanceWarningHumanReadableFormatter(
+    private val dictionary: LocaleDictionary
+) : HumanReadableEntryFormatter<PerformanceWarningEntry> {
+
+    override fun format(entry: PerformanceWarningEntry, locale: String): String {
+        val prefix = dictionary.performanceWarningPrefix(locale)
+        val thresholdLabel = dictionary.performanceWarningThresholdLabel(locale)
+        val impactLabel = dictionary.performanceWarningImpactLabel(locale)
+        val duration = formatNumber(entry.durationMs)
+        val threshold = formatNumber(entry.thresholdMs)
+
+        return "$prefix: ${entry.operation} | ⏱️ ${duration}ms ($thresholdLabel: ${threshold}ms) | $impactLabel: ${entry.impact}"
+    }
+
+    private fun formatNumber(value: Double): String = String.format("%.1f", value)
+}
+
+private class LocaleDictionary(private val defaultLocale: String) {
+
+    private val localeStrings: Map<String, LocaleStrings> = mapOf(
+        "en" to LocaleStrings(
+            bossLabel = "🎯 Sentinel Boss",
+            machineLearningLabel = "🤖ML",
+            heuristicLabel = "🧠Rules",
+            tacticLabels = mapOf(
+                "IDLE" to "Idle",
+                "BURST_AOE" to "Burst AoE",
+                "KITE" to "Kite",
+                "SUMMON" to "Summon"
+            ),
+            modeFallbackPrefix = "⚠️ AI Mode Fallback",
+            modeFallbackReasonLabel = "Reason",
+            performanceWarningPrefix = "⚡ Performance Warning",
+            performanceWarningThresholdLabel = "threshold",
+            performanceWarningImpactLabel = "Impact"
+        ),
+        "ko" to LocaleStrings(
+            bossLabel = "🎯 센티넬 보스",
+            machineLearningLabel = "🤖ML",
+            heuristicLabel = "🧠규칙",
+            tacticLabels = mapOf(
+                "IDLE" to "대기",
+                "BURST_AOE" to "광역폭발",
+                "KITE" to "카이팅",
+                "SUMMON" to "소환"
+            ),
+            modeFallbackPrefix = "⚠️ AI 모드 변경",
+            modeFallbackReasonLabel = "이유",
+            performanceWarningPrefix = "⚡ 성능 경고",
+            performanceWarningThresholdLabel = "한계",
+            performanceWarningImpactLabel = "영향"
+        )
+    )
+
+    fun bossLabel(locale: String): String = stringsFor(locale).bossLabel
+
+    fun modeLabel(aiMode: String, locale: String): String {
+        val strings = stringsFor(locale)
+        return when (aiMode) {
+            "MACHINE_LEARNING" -> strings.machineLearningLabel
+            "RULE_BASED_HEURISTICS" -> strings.heuristicLabel
+            else -> aiMode
+        }
+    }
+
+    fun tacticLabel(tactic: String, locale: String): String = stringsFor(locale).tacticLabels[tactic] ?: tactic
+
+    fun modeFallbackPrefix(locale: String): String = stringsFor(locale).modeFallbackPrefix
+
+    fun modeFallbackReasonLabel(locale: String): String = stringsFor(locale).modeFallbackReasonLabel
+
+    fun performanceWarningPrefix(locale: String): String = stringsFor(locale).performanceWarningPrefix
+
+    fun performanceWarningThresholdLabel(locale: String): String = stringsFor(locale).performanceWarningThresholdLabel
+
+    fun performanceWarningImpactLabel(locale: String): String = stringsFor(locale).performanceWarningImpactLabel
+
+    private fun stringsFor(locale: String): LocaleStrings {
+        val normalized = locale.lowercase()
+        return localeStrings[normalized] ?: localeStrings[defaultLocale]!!
+    }
+}
+
+private data class LocaleStrings(
+    val bossLabel: String,
+    val machineLearningLabel: String,
+    val heuristicLabel: String,
+    val tacticLabels: Map<String, String>,
+    val modeFallbackPrefix: String,
+    val modeFallbackReasonLabel: String,
+    val performanceWarningPrefix: String,
+    val performanceWarningThresholdLabel: String,
+    val performanceWarningImpactLabel: String
+)

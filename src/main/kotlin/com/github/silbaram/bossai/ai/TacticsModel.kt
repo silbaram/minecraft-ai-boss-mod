@@ -6,32 +6,30 @@ import kotlin.io.path.Path
 import com.mojang.logging.LogUtils
 
 /**
- * Loads and executes a small ONNX model to select a tactic for our boss.  If the
- * model file cannot be found or loaded, a simple rule‑based fallback is used
- * instead.  The model is expected to accept a 1×N float array and output a
- * 1×M tensor of logits, where M is the number of tactics.  The argmax of
- * the logits is mapped to a [Tactic] value.
+ * 작은 ONNX 모델을 로드하고 실행하여 보스의 전술을 선택합니다. 모델 파일을 찾거나 로드할 수 없는 경우,
+ * 간단한 규칙 기반 폴백이 대신 사용됩니다. 모델은 1×N 부동 소수점 배열을 입력으로 받고,
+ * M은 전술의 수인 1×M 텐서를 출력하는 것으로 예상됩니다. 로그잇의 argmax는 [Tactic] 값에 매핑됩니다.
  */
 class TacticsModel {
-    private val session: Any? // Using Any to avoid direct import dependency
+    private val session: Any? // 직접적인 import 의존성을 피하기 위해 Any 사용
     private val logger = LogUtils.getLogger()
     private var onnxAvailable = false
-    private var actualSession: Any? = null // For lazy initialization
+    private var actualSession: Any? = null // 지연 초기화를 위한 변수
     private var lastFallbackReason: String? = null
     private var fallbackOccurred = false
 
-    // Prefer detecting available classes over relying solely on a system property (which may not propagate early enough).
-    // Use ClassLoader.loadClass instead of Class.forName to avoid initialization
+    // 사용 가능한 클래스를 감지하는 것을 선호하며, 시스템 속성에만 의존하지 않습니다 (조기에 전파되지 않을 수 있음).
+    // Class.forName 대신 ClassLoader.loadClass를 사용하여 초기화를 피합니다.
     private fun classExists(name: String): Boolean = try {
         Thread.currentThread().contextClassLoader.loadClass(name)
         true
     } catch (_: ClassNotFoundException) {
         false
     } catch (_: LinkageError) {
-        // Handle cases where class exists but can't be linked (e.g., native libs missing)
+        // 클래스는 존재하지만 연결할 수 없는 경우 처리 (예: 네이티브 라이브러리 누락)
         false
     } catch (_: Exception) {
-        // Handle any other initialization errors
+        // 기타 초기화 오류 처리
         false
     }
 
@@ -41,11 +39,11 @@ class TacticsModel {
         val original = "ai.onnxruntime"
     val shaded = "com.github.silbaram.bossai.shaded.onnxruntime"
 
-        // Detection order:
-        // 1. If dev hint set and original exists -> use original
-        // 2. If shaded exists and original missing -> use shaded
-        // 3. If original exists -> use original
-        // 4. Fallback to shaded (will still fail gracefully if absent)
+        // 탐지 순서:
+        // 1. 개발자 힌트가 설정되고 원본이 존재하면 -> 원본 사용
+        // 2. 음영이 존재하고 원본이 없으면 -> 음영 사용
+        // 3. 원본이 존재하면 -> 원본 사용
+        // 4. 음영으로 대체 (부재 시에도 정상적으로 실패)
         when {
             devHint && classExists("$original.OrtEnvironment") -> original
             !classExists("$original.OrtEnvironment") && classExists("$shaded.OrtEnvironment") -> shaded
@@ -57,41 +55,27 @@ class TacticsModel {
 
     init {
         session = try {
-            logger.info("========================================")
-            logger.info("🤖 Boss AI System Initialization")
-            logger.info("========================================")
-            logger.info("ONNX package to use (auto-detected): {}", onnxPackage)
-            logger.info("System property boss_ai.dev.env = {}", System.getProperty("boss_ai.dev.env"))
-            logger.info("Class presence - ai.onnxruntime: {}, shaded: {}",
-                classExists("ai.onnxruntime.OrtEnvironment"),
-                classExists("com.github.silbaram.bossai.shaded.onnxruntime.OrtEnvironment")
-            )
+            logger.info("🤖 Boss AI initialization - ONNX package: {}", onnxPackage)
 
-            // Defer ONNX initialization - only check if classes exist without initializing
+            // ONNX 초기화를 지연 - 클래스가 존재하는지 초기화 없이 확인만 수행
             if (!classExists("$onnxPackage.OrtEnvironment")) {
                 logger.warn("⚠️ ONNX Runtime library not available (package: {})", onnxPackage)
-                logger.info("🔄 Falling back to heuristic AI mode")
-                logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Classic Algorithm)")
-                logger.info("========================================")
+                logger.info("🔄 AI MODE: RULE-BASED HEURISTICS")
                 null
             } else {
-                // Defer actual ONNX session creation until first use to avoid DLL loading during deserialization
-                logger.info("✅ ONNX Runtime classes detected, deferring initialization")
-                logger.info("🧠 AI MODE: DEFERRED ML INITIALIZATION")
-                logger.info("========================================")
-                "DEFERRED" // Use a marker string to indicate deferred initialization
+                // 실제 ONNX 세션 생성을 첫 사용까지 연기하여 역직렬화 중 DLL 로딩을 방지합니다.
+                logger.info("✅ AI MODE: MACHINE LEARNING (Deferred Initialization)")
+                "DEFERRED" // 지연 초기화를 나타내는 마커 문자열을 사용합니다.
             }
         } catch (e: Exception) {
             logger.error("❌ Failed to detect ONNX classes: {}", e.message)
-            logger.info("🔄 Falling back to heuristic AI mode")
-            logger.info("🧠 AI MODE: RULE-BASED HEURISTICS (Classic Algorithm)")
-            logger.info("========================================")
+            logger.info("🔄 AI MODE: RULE-BASED HEURISTICS")
             null
         }
     }
 
     /**
-     * Lazy initialization of ONNX session to avoid DLL loading during entity deserialization
+    * 엔티티 역직렬화 중 DLL 로딩을 방지하기 위한 ONNX 세션의 지연 초기화
      */
     private fun initializeOnnxSession(): Any? {
         if (actualSession != null || session != "DEFERRED") {
@@ -158,9 +142,9 @@ class TacticsModel {
     }
 
     /**
-     * Given a feature vector, returns a chosen tactic.  When a model is
-     * available, performs inference; otherwise uses heuristics.  The feature
-     * vector should be normalised in the caller.
+     * 주어진 특성 벡터를 기반으로 전술을 선택하여 반환합니다.
+     * ONNX 모델이 사용 가능하면 모델 추론을 시도하고, 그렇지 않으면 규칙 기반 휴리스틱을 사용합니다.
+     * 특성 벡터는 호출자가 정규화하여 전달해야 합니다.
      */
     fun selectTactic(features: FloatArray): Tactic {
         // Try lazy initialization if we have deferred session
@@ -373,7 +357,9 @@ class TacticsModel {
     }
 
     /**
-     * Attempts to locate the model in the config folder (config/boss_ai/boss_tactics.onnx).
+     * config/boss_ai/boss_tactics.onnx 경로에서 모델 파일을 찾도록 시도합니다.
+     * 여러 표준 위치(개발용 runs/client/config, 사용자/프로젝트의 config 디렉터리 등)를 확인하며,
+     * 찾지 못하면 null을 반환합니다.
      */
     private fun getModelPath(): Path? {
         // Try multiple possible locations for the ONNX model file

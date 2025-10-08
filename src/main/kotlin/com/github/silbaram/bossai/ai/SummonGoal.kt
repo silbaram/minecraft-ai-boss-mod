@@ -40,11 +40,9 @@ class SummonGoal(private val boss: SentinelBossEntity) : Goal() {
         val canSummon = cooldownReady && hasTarget && activeMinionCount < maxActiveMinions
 
         if (canSummon) {
-            logger.info("[SUMMON] Goal activation: target={}, active_minions={}/{}, cooldown_ready={}",
-                boss.target?.name?.string ?: "null",
-                activeMinionCount, maxActiveMinions, cooldownReady)
+            logger.info("👥 [SUMMON] Activate — target {} | minions {}/{} | cooldown ready",
+                boss.target?.name?.string ?: "null", activeMinionCount, maxActiveMinions)
         }
-
         return canSummon
     }
 
@@ -55,25 +53,32 @@ class SummonGoal(private val boss: SentinelBossEntity) : Goal() {
         summonsThisExecution = 0
         activationTime = System.currentTimeMillis()
 
-        logger.info("[SUMMON] Starting summoning ritual: duration={}ticks, cooldown={}ticks",
-            executionDuration, cooldownDuration)
+        logger.info("👥 [SUMMON] Start — duration {}t | cooldown {}t", executionDuration, cooldownDuration)
+        
+        // 즉시 첫 번째 소환 시도 (tick 지연 방지)
+        try {
+            summonMinion()
+        } catch (e: Exception) {
+            logger.warn("👥 [SUMMON] Immediate summon failed: {}", e.message)
+        }
     }
 
     override fun tick() {
+        logger.debug("👥 [SUMMON] tick() — executing: {}, remaining: {}t", isExecuting, executionTicks)
+        
         if (isExecuting) {
             executionTicks--
-            // Summon minions gradually during execution
-            if (executionTicks % 20 == 0 && executionTicks > 0) { // Every second
+
+            // 20틱마다 추가 소환 (첫 소환은 start()에서 이미 완료)
+            if (executionTicks > 0 && executionTicks % 20 == 0) {
+                logger.debug("👥 [SUMMON] Periodic summon — remaining {}t", executionTicks)
                 summonMinion()
             }
 
-            // Log progress every 20 ticks during execution
-            if (executionTicks % 20 == 0) {
-                logger.debug("[SUMMON] Execution progress: remaining_ticks={}, minions_summoned={}",
-                    executionTicks, summonsThisExecution)
+            if (executionTicks <= 0) {
+                logger.debug("👥 [SUMMON] Execution finished")
             }
         } else {
-            // Count down cooldown when not executing
             if (cooldownTicks > 0) {
                 cooldownTicks--
             }
@@ -81,7 +86,12 @@ class SummonGoal(private val boss: SentinelBossEntity) : Goal() {
     }
 
     override fun canContinueToUse(): Boolean {
-        return isExecuting && executionTicks > 0
+        // 더 강력한 지속 조건: 실행 중에는 중단되지 않도록 보장
+        val shouldContinue = isExecuting && executionTicks > 0
+        if (!shouldContinue && isExecuting) {
+            logger.debug("👥 [SUMMON] canContinueToUse() returning false — will stop")
+        }
+        return shouldContinue
     }
 
     override fun stop() {
@@ -89,7 +99,7 @@ class SummonGoal(private val boss: SentinelBossEntity) : Goal() {
         val duration = System.currentTimeMillis() - activationTime
         val finalMinionCount = getActiveMinionCount()
 
-        logger.info("[SUMMON] Summoning ritual completed: duration={}ms, minions_summoned={}, total_active={}",
+        logger.info("✅ [SUMMON] Done — {}ms | summoned {} | total active {}",
             duration, summonsThisExecution, finalMinionCount)
 
         isExecuting = false
@@ -110,34 +120,38 @@ class SummonGoal(private val boss: SentinelBossEntity) : Goal() {
         try {
             val zombie = Zombie(EntityType.ZOMBIE, level)
             zombie.setPos(spawnX, spawnY, spawnZ)
-            // Set the boss as the minion's target to make them assist in combat
             zombie.target = boss.target
 
             val success = level.addFreshEntity(zombie)
             if (success) {
                 summonsThisExecution++
-                logger.debug("[SUMMON] Minion summoned #{}: position=({:.1f},{:.1f},{:.1f}), target={}",
-                    summonsThisExecution, spawnX, spawnY, spawnZ,
+                // 좌표를 미리 포맷해서 SLF4J 플레이스홀더와 혼용 방지
+                val xStr = String.format("%.1f", spawnX)
+                val yStr = String.format("%.1f", spawnY)
+                val zStr = String.format("%.1f", spawnZ)
+                logger.info("👥 [SUMMON] Spawned #{} at ({}, {}, {}) | target: {}",
+                    summonsThisExecution, xStr, yStr, zStr,
                     zombie.target?.name?.string ?: "none")
             } else {
-                logger.warn("[SUMMON] Failed to spawn minion at position ({:.1f},{:.1f},{:.1f})",
-                    spawnX, spawnY, spawnZ)
+                val xStr = String.format("%.1f", spawnX)
+                val yStr = String.format("%.1f", spawnY)
+                val zStr = String.format("%.1f", spawnZ)
+                logger.warn("👥 [SUMMON] Spawn failed at ({}, {}, {}) — addFreshEntity returned false",
+                    xStr, yStr, zStr)
             }
         } catch (e: Exception) {
-            logger.error("[SUMMON] Error summoning minion: {}", e.message)
+            logger.error("👥 [SUMMON] Spawn error: {}", e.message)
         }
     }
 
     private fun getActiveMinionCount(): Int {
-        // Count nearby zombies within 16 blocks (assumed to be our minions)
         val nearbyZombies = boss.level().getEntitiesOfClass(
             Zombie::class.java,
             boss.boundingBox.inflate(MINION_DETECTION_RANGE)
         ) { it.isAlive }
 
         val count = nearbyZombies.size
-        logger.debug("[SUMMON] Active minion count: {} within {:.1f} blocks", count, MINION_DETECTION_RANGE)
-
+        logger.trace("👥 [SUMMON] Active minions: {} within {:.1f}m", count, MINION_DETECTION_RANGE)
         return count
     }
 }

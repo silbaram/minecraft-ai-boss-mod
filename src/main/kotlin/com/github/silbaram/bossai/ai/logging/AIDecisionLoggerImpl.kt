@@ -29,6 +29,7 @@ class AIDecisionLoggerImpl(
     private val entriesLogged = AtomicLong(0)
     private val lastLogTime = AtomicLong(System.currentTimeMillis())
     private val logEntriesByEntity = ConcurrentHashMap<String, MutableList<LogEntry>>()
+    private val defaultLocale: String = LoggingConfig.loadConfig().defaultLocale
 
     /**
      * 전술 결정 과정을 로깅합니다.
@@ -81,14 +82,11 @@ class AIDecisionLoggerImpl(
         addLogEntry(entry)
 
         // NeoForge 로그에 사람이 읽기 쉬운 형식으로 출력
-        val humanReadable = formatter.formatAsHumanReadable(entry, "en")
+    val humanReadable = formatter.formatAsHumanReadable(entry, defaultLocale)
         LOGGER.info(humanReadable)
 
-        // 개발 모드에서 JSON 출력
-        if (isDevMode()) {
-            val jsonOutput = formatter.formatAsJson(entry)
-            LOGGER.debug("AI_DECISION_JSON: {}", jsonOutput)
-        }
+        val jsonOutput = formatter.formatAsJson(entry)
+        LOGGER.debug("AI_DECISION_JSON: {}", jsonOutput)
 
         // 성능 경고 자동 감지
         if (performanceMetrics.requiresPerformanceWarning) {
@@ -143,7 +141,7 @@ class AIDecisionLoggerImpl(
         addLogEntry(entry)
 
         // NeoForge 로그에 경고로 출력
-        val humanReadable = formatter.formatAsHumanReadable(entry, "en")
+    val humanReadable = formatter.formatAsHumanReadable(entry, defaultLocale)
         LOGGER.warn(humanReadable)
 
         // JSON 출력 (폴백은 중요한 이벤트이므로 항상 출력)
@@ -188,7 +186,7 @@ class AIDecisionLoggerImpl(
         addLogEntry(entry)
 
         // 성능 경고는 속도 제한 적용 (스팸 방지)
-        val message = formatter.formatAsHumanReadable(entry, "en")
+    val message = formatter.formatAsHumanReadable(entry, defaultLocale)
         if (rateLimitedLogger != null) {
             rateLimitedLogger.warn("PERFORMANCE_WARNING", message)
         } else {
@@ -259,7 +257,7 @@ class AIDecisionLoggerImpl(
 
         return LoggingStatus(
             isEnabled = true,
-            currentLogLevel = if (isDevMode()) "DEBUG" else "INFO",
+            currentLogLevel = "INFO",
             totalEntriesLogged = entriesLogged.get(),
             lastLogTime = if (lastLogTime.get() > 0) Instant.ofEpochMilli(lastLogTime.get()) else null,
             bufferSize = BUFFER_SIZE,
@@ -291,14 +289,6 @@ class AIDecisionLoggerImpl(
                 entityLogs.removeFirstOrNull()
             }
         }
-    }
-
-    /**
-     * 개발 모드 여부를 확인합니다.
-     */
-    private fun isDevMode(): Boolean {
-        return System.getProperty("boss_ai.dev", "false").toBoolean() ||
-               System.getProperty("boss_ai.debug.ai", "false").toBoolean()
     }
 }
 

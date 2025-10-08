@@ -56,7 +56,9 @@ object LoggingConfig {
                      System.getProperty("boss_ai.debug.ai", "false").toBoolean(),
             jsonLoggingEnabled = System.getProperty("boss_ai.logging.json", "false").toBoolean(),
             performanceWarningThresholdMs = System.getProperty("boss_ai.logging.performance_threshold", "50.0").toDoubleOrNull() ?: 50.0,
-            defaultLocale = System.getProperty("boss_ai.logging.locale", "en"),
+            defaultLocale = System.getProperty("boss_ai.logging.locale")
+                ?: System.getenv("BOSS_AI_LOGGING_LOCALE")
+                ?: "en",
             bufferSize = System.getProperty("boss_ai.logging.buffer_size", "100").toIntOrNull() ?: 100,
             maxLogEntries = System.getProperty("boss_ai.logging.max_entries", "1000").toIntOrNull() ?: 1000
         )
@@ -161,7 +163,7 @@ object LoggingConfig {
             "boss_ai.logging.rate_limit_interval" to "5000",
             "boss_ai.logging.max_logs_per_interval" to "3",
             "boss_ai.logging.performance_threshold" to "50.0",
-            "boss_ai.logging.locale" to "en",
+            "boss_ai.logging.locale" to "ko",
             "boss_ai.logging.buffer_size" to "100",
             "boss_ai.logging.max_entries" to "1000"
         )

@@ -33,10 +33,10 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
         val canActivate = hpPct < LOW_HEALTH_THRESHOLD && player != null
 
         if (canActivate) {
-            logger.info("[KITE] Goal activation: HP={:.1f}%, nearest_player={}, distance={:.1f}",
-                hpPct * 100,
-                player?.name?.string ?: "null",
-                player?.let { boss.distanceTo(it) } ?: -1f)
+            val hpStr = String.format("%.1f", hpPct * 100)
+            val playerName = player?.name?.string ?: "-"
+            val distStr = player?.let { String.format("%.1f", boss.distanceTo(it)) } ?: "-"
+            logger.info("🏃 [KITE] Activate — HP ${hpStr}% | target ${playerName} | dist ${distStr}m")
         }
 
         return canActivate
@@ -47,8 +47,8 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
         activationTime = System.currentTimeMillis()
         val hpPct = boss.health / boss.maxHealth
 
-        logger.info("[KITE] Starting kite maneuver: HP={:.1f}%, duration={}ticks",
-            hpPct * 100, RETREAT_DURATION_TICKS)
+        val hpStr = String.format("%.1f", hpPct * 100)
+        logger.info("🏃 [KITE] Start — HP ${hpStr}% | duration ${RETREAT_DURATION_TICKS}t")
 
         moveAwayFromNearestPlayer()
     }
@@ -62,10 +62,11 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
 
         // Log progress every 20 ticks (1 second)
         if (cooldownTicks % 20 == 0) {
-            val hpPct = boss.health / boss.maxHealth
+            val hpPctNow = boss.health / boss.maxHealth
+            val hpStrNow = String.format("%.1f", hpPctNow * 100)
             val nearestPlayer = boss.level().getNearestPlayer(boss, PLAYER_DETECTION_RANGE)
-            logger.debug("[KITE] Retreat progress: HP={:.1f}%, remaining_ticks={}, distance_to_player={:.1f}",
-                hpPct * 100, cooldownTicks, nearestPlayer?.let { boss.distanceTo(it) } ?: -1f)
+            val distStr = nearestPlayer?.let { String.format("%.1f", boss.distanceTo(it)) } ?: "-"
+            logger.debug("🏃 [KITE] Progress — HP ${hpStrNow}% | remain ${cooldownTicks}t | dist ${distStr}m")
         }
     }
 
@@ -74,9 +75,11 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
         val shouldContinue = cooldownTicks > 0 && hpPct < RECOVERY_THRESHOLD
 
         if (!shouldContinue && cooldownTicks <= 0) {
-            logger.debug("[KITE] Stopping due to timer expiration: HP={:.1f}%", hpPct * 100)
+            val hpStr = String.format("%.1f", hpPct * 100)
+            logger.debug("🏁 [KITE] Stop — timer expired | HP ${hpStr}%")
         } else if (!shouldContinue && hpPct >= RECOVERY_THRESHOLD) {
-            logger.info("[KITE] Stopping due to health recovery: HP={:.1f}%", hpPct * 100)
+            val hpStr = String.format("%.1f", hpPct * 100)
+            logger.info("🏁 [KITE] Stop — health recovered | HP ${hpStr}%")
         }
 
         return shouldContinue
@@ -94,8 +97,12 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
 
         val success = boss.navigation.moveTo(targetPos.x, targetPos.y, targetPos.z, MOVEMENT_SPEED)
 
-        logger.debug("[KITE] Retreat movement: from=({:.1f},{:.1f}) to=({:.1f},{:.1f}), current_distance={:.1f}, navigation_success={}",
-            boss.x, boss.z, targetPos.x, targetPos.z, currentDistance, success)
+        val fromX = String.format("%.1f", boss.x)
+        val fromZ = String.format("%.1f", boss.z)
+        val toX = String.format("%.1f", targetPos.x)
+        val toZ = String.format("%.1f", targetPos.z)
+        val distStr = String.format("%.1f", currentDistance)
+        logger.debug("↩️ [KITE] Move — from (${fromX},${fromZ}) to (${toX},${toZ}) | dist ${distStr}m | nav=${success}")
     }
 
     override fun stop() {
@@ -103,7 +110,7 @@ class KiteGoal(private val boss: SentinelBossEntity) : Goal() {
         val duration = System.currentTimeMillis() - activationTime
         val finalHp = boss.health / boss.maxHealth
 
-        logger.info("[KITE] Kite maneuver completed: duration={}ms, final_HP={:.1f}%",
-            duration, finalHp * 100)
+        val finalHpStr = String.format("%.1f", finalHp * 100)
+        logger.info("🏁 [KITE] Done — ${duration}ms | HP ${finalHpStr}%")
     }
 }
